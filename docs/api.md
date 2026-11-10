@@ -136,14 +136,3 @@ JitPack consumer coordinate for multi-module repo:
 `com.github.cubecnelson.foldsense:foldsense:<tag|commit>`
 
 ---
-
-## 繁中速查
-
-| 你想做 | 呼叫 |
-|--------|------|
-| 開始聽 | `FoldSense.attach(activity)` |
-| 加回調 | `addListener { unfolded, sw, state -> }` |
-| 而家展開咗未 | `isLikelyUnfolded()` / `currentState()` |
-| 停止 | `detach()`（會清 listeners） |
-| 自己比兩個 SW | `FoldSense.detectTransition(prev, curr)` |
-| Window 闊高 | `WindowMetricsHelper.currentWidthPx` 等 |
