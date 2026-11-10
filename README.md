@@ -1,8 +1,8 @@
 # FoldSense
 
-**FoldSense** 係一個細型 Android library（AAR），用系統 `Configuration.smallestScreenWidthDp`（同可選 API 30+ `WindowMetrics`）去推斷 foldable **展開／摺埋**，**唔需要** `androidx.window`。
+**FoldSense** is a small Android library (AAR) that infers foldable **unfold / fold** from the system `Configuration.smallestScreenWidthDp` (plus optional API 30+ `WindowMetrics`). It does **not** require `androidx.window`.
 
-適合 dependency catalog 鎖死、唔可以亂升 AndroidX／加新 Jetpack 模組嘅 app。
+Use it when your dependency catalog is locked and you cannot bump AndroidX or add new Jetpack modules.
 
 | | |
 |---|---|
@@ -10,45 +10,43 @@
 | Version | `1.0.0` (`FoldSense.VERSION`) |
 | minSdk | 21 |
 | compileSdk | 34 |
-| Language | Kotlin（Java 可呼叫，`@JvmStatic`） |
+| Language | Kotlin (callable from Java, `@JvmStatic`) |
 | License | MIT |
 | Repo | https://github.com/cubecnelson/foldsense |
 
 **Modules**
 
-| Module | 說明 |
-|--------|------|
-| `:foldsense` | 可發布 library |
+| Module | Description |
+|--------|-------------|
+| `:foldsense` | Publishable library |
 | `:sample` | Demo Activity |
 
-延伸文件：[`docs/integration.md`](docs/integration.md) · [`docs/api.md`](docs/api.md) · [`docs/fold-detection.md`](docs/fold-detection.md)
+Further docs: [`docs/integration.md`](docs/integration.md) · [`docs/api.md`](docs/api.md) · [`docs/fold-detection.md`](docs/fold-detection.md)
 
 ---
 
-## 繁中（香港）
+## Why not androidx.window?
 
-### 點解唔用 androidx.window？
-
-官方摺機姿勢 API（`WindowInfoTracker`／`FoldingFeature`）要加：
+The official fold posture APIs (`WindowInfoTracker` / `FoldingFeature`) require:
 
 ```text
 androidx.window:window
 ```
 
-呢個依賴好多時會拉高 `activity`、`lifecycle` 等 transitive 版本。如果你個工程 catalog 已經鎖死（例如 activity `1.1.0`、appcompat `1.1.0`），加 window **可能逼你升一串 library**。
+That dependency often pulls newer transitive versions of `activity`, `lifecycle`, and related artifacts. If your catalog is already pinned (for example activity `1.1.0`, appcompat `1.1.0`), adding Window **can force a cascade of upgrades**.
 
-FoldSense 刻意：
+FoldSense is designed so that:
 
-- **零** `androidx.window`
-- runtime 只靠 Android SDK：`Activity.registerComponentCallbacks` + `Configuration`
-- `androidx.annotation` 只係 `compileOnly`（注解，唔會逼消費者升級）
-- API 30+ 用系統 `WindowManager.currentWindowMetrics`（同樣唔使 window Jetpack）
+- There is **no** `androidx.window` dependency
+- Runtime uses only the Android SDK: `Activity.registerComponentCallbacks` + `Configuration`
+- `androidx.annotation` is `compileOnly` (annotations only; it does not force consumers to upgrade)
+- On API 30+, it can use the platform `WindowManager.currentWindowMetrics` (still no Window Jetpack)
 
-代價：偵測嘅係「最小螢幕闊度變咗」，**唔係** hinge 角度／半開 Flex Mode。詳見 [限制](#限制) 同 [`docs/fold-detection.md`](docs/fold-detection.md)。
+Trade-off: it detects that **smallest screen width changed**, **not** hinge angle or half-open Flex Mode. See [Limitations](#limitations) and [`docs/fold-detection.md`](docs/fold-detection.md).
 
-### 安裝（JitPack）
+## Install (JitPack)
 
-1. 根專案 `settings.gradle.kts`（或舊式 `allprojects`）加 JitPack：
+1. Add JitPack to the root `settings.gradle.kts` (or the older `allprojects` block):
 
 ```kotlin
 dependencyResolutionManagement {
@@ -60,22 +58,22 @@ dependencyResolutionManagement {
 }
 ```
 
-2. app module：
+2. In the app module:
 
 ```kotlin
 dependencies {
-    // 用 Git tag（建議喺 GitHub 開 tag：1.0.0 或 v1.0.0）
+    // Prefer a Git tag (create tag 1.0.0 or v1.0.0 on GitHub)
     implementation("com.github.cubecnelson.foldsense:foldsense:1.0.0")
 
-    // 或者直接釘死 commit（而家 main 可用）：
+    // Or pin a commit (current main works):
     // implementation("com.github.cubecnelson.foldsense:foldsense:a7846c157a21806b4a2c405a3c34758e0a186263")
 }
 ```
 
-JitPack multi-module 座標格式：`com.github.<user>.<repo>:<module>:<tagOrCommit>`。  
-Repo 內有 `jitpack.yml`（OpenJDK 17）。首次 build 可能要等 JitPack 編譯完成。
+JitPack multi-module coordinate format: `com.github.<user>.<repo>:<module>:<tagOrCommit>`.  
+The repo includes `jitpack.yml` (OpenJDK 17). The first build may wait while JitPack compiles.
 
-### 安裝（本地 module）
+## Install (local module)
 
 ```kotlin
 // settings.gradle.kts
@@ -88,9 +86,9 @@ dependencies {
 }
 ```
 
-唔會改你其他 dependency version。
+This does not change your other dependency versions.
 
-### Quick start
+## Quick start
 
 ```kotlin
 import com.cicadahk.foldsense.FoldSense
@@ -103,27 +101,27 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         foldSense = FoldSense.attach(this)
             .addListener { unfolded, smallestWidthDp, state ->
-                // unfolded == true  → smallestWidthDp 變大（典型 unfold）
-                // unfolded == false → smallestWidthDp 變細（典型 fold）
+                // unfolded == true  → smallestWidthDp grew (typical unfold)
+                // unfolded == false → smallestWidthDp shrank (typical fold)
                 when (state) {
-                    FoldState.UNFOLDED -> { /* 闊 layout */ }
-                    FoldState.FOLDED -> { /* 窄 layout */ }
-                    FoldState.UNKNOWN -> { /* 未有足夠樣本 */ }
+                    FoldState.UNFOLDED -> { /* wide layout */ }
+                    FoldState.FOLDED -> { /* narrow layout */ }
+                    FoldState.UNKNOWN -> { /* not enough samples yet */ }
                 }
             }
     }
 
     override fun onStop() {
-        foldSense?.detach()  // 會 unregister + clear listeners
+        foldSense?.detach()  // unregisters and clears listeners
         foldSense = null
         super.onStop()
     }
 }
 ```
 
-Fragment：用 `FoldSense.attach(requireActivity())`，同樣喺 `onStart`／`onStop` 管理。
+From a Fragment, use `FoldSense.attach(requireActivity())` and manage it in `onStart` / `onStop` the same way.
 
-查而家狀態：
+Query current state:
 
 ```kotlin
 foldSense?.isLikelyUnfolded()       // state == UNFOLDED
@@ -132,24 +130,24 @@ foldSense?.currentSmallestWidthDp()
 FoldSense.VERSION                  // "1.0.0"
 ```
 
-可選輔助（唔係 fold 本體）：
+Optional helpers (not the fold detector itself):
 
 ```kotlin
-FoldSense.isLandscapeBoundsOrFalse(this)  // API < 30 一律 false
+FoldSense.isLandscapeBoundsOrFalse(this)  // always false below API 30
 WindowMetricsHelper.currentWidthPx(this)
 WindowMetricsHelper.currentHeightPx(this)
 ```
 
-純比較（唔使 attach）：
+Pure comparison (no attach required):
 
 ```kotlin
 val unfolded: Boolean? = FoldSense.detectTransition(previousSwDp = 320, currentSwDp = 600)
-// true = 變大；false = 變細；null = 無變／previous 無效
+// true = grew; false = shrank; null = no change / invalid previous
 ```
 
-### Manifest `configChanges`（可選）
+## Manifest `configChanges` (optional)
 
-`:sample` 示範咗：
+`:sample` demonstrates:
 
 ```xml
 <activity
@@ -158,41 +156,41 @@ val unfolded: Boolean? = FoldSense.detectTransition(previousSwDp = 320, currentS
     android:exported="true">
 ```
 
-- **有** `configChanges`：Activity 唔 recreate，FoldSense 經 `ComponentCallbacks` 收到 `onConfigurationChanged`，listener 會响同一個 Activity 實例觸發。
-- **無** `configChanges`：系統可能 recreate Activity。你唔使手動 forward `onConfigurationChanged`；只要喺新實例 `onStart` 再 `FoldSense.attach(...)`。首次 attach 後 `currentState()` 係 `UNKNOWN`，直至下一次 SW dp 轉變。
+- **With** `configChanges`: the Activity is not recreated. FoldSense receives `onConfigurationChanged` via `ComponentCallbacks`, and listeners fire on the same Activity instance.
+- **Without** `configChanges`: the system may recreate the Activity. You do not need to forward `onConfigurationChanged` yourself; just call `FoldSense.attach(...)` again in the new instance’s `onStart`. After the first attach, `currentState()` is `UNKNOWN` until the next SW dp change.
 
-FoldSense **唔要求**你 override `Activity.onConfigurationChanged`。
+FoldSense **does not require** you to override `Activity.onConfigurationChanged`.
 
-### API 一覽
+## API overview
 
-| 類型 | 重點 |
-|------|------|
-| `FoldSense` | `attach`／`detach`／listener／`isLikelyUnfolded`／`currentState`／`detectTransition`／`isLandscapeBoundsOrFalse` |
-| `FoldListener` | `onFoldChanged(unfolded, smallestWidthDp, state)`（`fun interface`，可用 lambda） |
-| `FoldState` | `FOLDED`、`UNFOLDED`、`UNKNOWN` |
-| `WindowMetricsHelper` | `isLandscapeBounds`（API 30+）、`currentWidthPx`、`currentHeightPx` |
+| Type | Highlights |
+|------|------------|
+| `FoldSense` | `attach` / `detach` / listeners / `isLikelyUnfolded` / `currentState` / `detectTransition` / `isLandscapeBoundsOrFalse` |
+| `FoldListener` | `onFoldChanged(unfolded, smallestWidthDp, state)` (`fun interface`, lambda-friendly) |
+| `FoldState` | `FOLDED`, `UNFOLDED`, `UNKNOWN` |
+| `WindowMetricsHelper` | `isLandscapeBounds` (API 30+), `currentWidthPx`, `currentHeightPx` |
 
-完整表：[`docs/api.md`](docs/api.md)。
+Full table: [`docs/api.md`](docs/api.md). Locked-catalog integration: [`docs/integration.md`](docs/integration.md).
 
-### 限制
+## Limitations
 
-- **唔係** hinge angle、**唔係** `FoldingFeature`、**唔偵測**「半開／書本／桌面」姿勢。
-- 分屏、外接螢幕、部分翻蓋、字體／density 導致 SW 變，都可能觸發。
-- attach 當下唔會估而家係 fold 定 unfold（`UNKNOWN`），要等一次 SW 轉變。
-- Listener 喺 configuration callback thread 呼叫；更新 UI 請 `runOnUiThread`（sample 已示範）。
-- `detach()` 會 **清晒** listeners。
+- This is **not** hinge-angle detection, **not** `FoldingFeature`, and it does **not** detect half-open / book / tabletop postures.
+- Split-screen, external displays, some flip devices, and font / density changes that alter SW can also fire the callback.
+- Immediately after `attach`, FoldSense does not guess whether the device is currently folded or unfolded (`UNKNOWN`); it waits for an SW change.
+- Listeners are invoked on the configuration callback thread; use `runOnUiThread` to update the UI (the sample does this).
+- `detach()` **clears all** listeners.
 
-### Sample module
+## Sample module
 
 ```text
 :sample → MainActivity
 ```
 
-`onStart` attach + listener；顯示 `FoldState`、SW dp、window px、`isLandscapeBoundsOrFalse`。用 Android Studio 開 repo，Run `:sample`（建議真機／摺機 emulator）。
+It attaches in `onStart` and shows `FoldState`, SW dp, window px, and `isLandscapeBoundsOrFalse`. Open the repo in Android Studio and Run `:sample` (a real foldable or foldable emulator is recommended).
 
-### 本機 build
+## Build locally
 
-Android Studio Giraffe+（AGP 8.2）Sync 即可。若未有 wrapper jar：
+Sync with Android Studio Giraffe+ (AGP 8.2). If the wrapper jar is missing:
 
 ```bash
 gradle wrapper --gradle-version 8.2
@@ -200,78 +198,6 @@ gradle wrapper --gradle-version 8.2
 ./gradlew :foldsense:test
 ```
 
----
+## License
 
-## English
-
-### Overview
-
-FoldSense is a small Android AAR that infers foldable **unfold** / **fold** when `Configuration.smallestScreenWidthDp` **increases** / **decreases**. It registers via `Activity.registerComponentCallbacks` — **no** `androidx.window`, so it fits apps whose AndroidX catalog cannot take new Jetpack modules or forced upgrades.
-
-Optional API 30+ helpers read `WindowManager.currentWindowMetrics` (platform API only).
-
-### Why not androidx.window?
-
-`androidx.window:window` pulls FoldingFeature / hinge APIs but often upgrades transitive `activity` / `lifecycle` artifacts. FoldSense avoids that entirely: only `compileOnly` `androidx.annotation` at compile time for the library itself.
-
-Trade-off: configuration-size heuristics, not hinge posture. See [Limitations](#limitations) and [`docs/fold-detection.md`](docs/fold-detection.md).
-
-### Install (JitPack)
-
-```kotlin
-// settings.gradle.kts
-maven(url = "https://jitpack.io")
-
-// app
-implementation("com.github.cubecnelson.foldsense:foldsense:1.0.0")
-// or pin a commit:
-// implementation("com.github.cubecnelson.foldsense:foldsense:a7846c157a21806b4a2c405a3c34758e0a186263")
-```
-
-Coordinate shape: `com.github.<user>.<repo>:<module>:<tagOrCommit>`.
-
-### Install (module)
-
-```kotlin
-implementation(project(":foldsense"))
-```
-
-### Quick start
-
-```kotlin
-private var foldSense: FoldSense? = null
-
-override fun onStart() {
-    super.onStart()
-    foldSense = FoldSense.attach(this).addListener { unfolded, swDp, state ->
-        // handle layout
-    }
-}
-
-override fun onStop() {
-    foldSense?.detach()
-    foldSense = null
-    super.onStop()
-}
-```
-
-### Manifest note
-
-Optional `android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"` keeps the Activity instance across fold transitions (as in `:sample`). FoldSense does **not** require forwarding `onConfigurationChanged`.
-
-### API summary
-
-- **`FoldSense`** — lifecycle attach/detach, listeners, `isLikelyUnfolded()`, `currentState()`, `currentSmallestWidthDp()`, `detectTransition()`, `isLandscapeBoundsOrFalse()`, `VERSION`
-- **`FoldListener`** — `onFoldChanged(Boolean, Int, FoldState)`
-- **`FoldState`** — `FOLDED` | `UNFOLDED` | `UNKNOWN`
-- **`WindowMetricsHelper`** — bounds helpers without androidx.window
-
-Full reference: [`docs/api.md`](docs/api.md). Integration with locked catalogs: [`docs/integration.md`](docs/integration.md).
-
-### Limitations
-
-Not hinge-angle / Flex Mode. Multi-window, external displays, and some flip devices can change SW dp. State stays `UNKNOWN` until the first SW delta after `attach`. `detach()` clears all listeners. Callbacks may need `runOnUiThread` for UI work.
-
-### Sample & license
-
-Run `:sample`. MIT © 2026 Nelson Cheung.
+MIT © 2026 Nelson Cheung
